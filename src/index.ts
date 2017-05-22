@@ -1,31 +1,9 @@
-﻿import { MongoClient, Db } from 'mongodb';
-require('source-map-support').install();
-let path = require('path')
-
-import { ILuisModelMap, IAddress, IIdentity, ChatConnector, IPromptConfirmResult, IPromptChoiceResult, Session, Message, IEntity, IDialogResult, UniversalBot, IntentRecognizerSet } from 'botbuilder';
+﻿let path = require('path')
+import { ChatConnector, Session, Message, UniversalBot } from 'botbuilder';
 import * as builder from 'botbuilder';
-import { Api } from './lib/api';
-import * as _ from 'lodash';
-import * as async from 'async';
-import * as moment from 'moment';
-import * as uuid from 'uuid/v1';
-
-import * as imagesServer from './lib/imagesServer';
-import * as info from './lib/info';
-import { List } from 'linqts';
-import { User } from '@connie/modules/dist/users';
-
-import * as cmanalytics from '@connie/modules/dist/analytics';
-import * as cmusers from '@connie/modules/dist/users';
-import * as cmbotframework from '@connie/modules/dist/botframework';
-import * as cmproactive from '@connie/modules/dist/proactive';
-import * as cmfacebok from '@connie/modules/dist/facebook';
-import * as cmconversation from '@connie/modules/dist/conversation';
-import * as cmerrors from '@connie/modules/dist/errors';
-import * as cmi18n from '@connie/modules/dist/i18n';
-
 import * as express from 'express';
 import * as bodyparser from 'body-parser';
+import * as cmfacebok from '@connie/modules/dist/facebook';
 
 interface IOptionsArgs {
     message: string;
@@ -36,7 +14,6 @@ let connector = new ChatConnector({
     appPassword: process.env.MICROSOFT_APP_PASSWORD
 });
 
-let api: Api;
 
 // bot
 let bot = new UniversalBot(connector);
@@ -81,15 +58,15 @@ bot.endConversationAction('forget', 'Converation deleted.', { matches: /^forget/
 bot.use(builder.Middleware.dialogVersion({ version: 2, resetCommand: /^reset/i }));
 
 if (process.env.DB_URI) {
-    MongoClient.connect(process.env.DB_URI).then((db) => {
-        startBot(db);
-    });
+    // MongoClient.connect(process.env.DB_URI).then((db) => {
+    //     startBot(db);
+    // });
 }
 else {
     startBot(null);
 }
 
-function startBot(db: Db) {
+function startBot(db) {
     let server = express()
 
     server.use(bodyparser.json())
