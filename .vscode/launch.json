@@ -1,0 +1,22 @@
+{
+    "version": "0.1.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Program",
+            "program": "${workspaceRoot}/src/index.ts",
+            "cwd": "${workspaceRoot}",
+            "env": {
+                "NODE_ENV": "local",
+                "MICROSOFT_APP_ID": "30324cf9-d037-456e-a48d-a5e5b1ea88be",
+                "MICROSOFT_APP_PASSWORD": "ddX9ymCzyRbwhCm4bMPfi3p",
+                "PORT": "5557"
+            },
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceRoot}/{.,/node_modules/connie-modules}/dist/**"
+            ]
+        }
+    ]
+}
