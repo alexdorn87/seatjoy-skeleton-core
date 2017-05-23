@@ -21,7 +21,7 @@ let bot = new UniversalBot(connector);
 
 let intents = new builder.IntentDialog();
 
-bot.dialog('/', intents)
+bot.dialog('/', intents);
 
 intents
     .matches(/\/getstarted/, '/getstarted') //for testing purposes
@@ -236,13 +236,14 @@ bot.dialog('/order', [
             session.replaceDialog('/selectItemOptions', item);
         }
         else {
-            sendReceiptCard(session, JSON.parse(args.data) as IOrderDetails);
+            displayOrderDetails(session, item);
             builder.Prompts.choice(session, 'Please select:', ['Confirm', 'Cancel'], { maxRetries: 0 });
         }
     },
     (session, results) => {
         if (results.response.index == 0) {
             session.send('Your order is confirmed. Thank you for choosing us!');
+            sendReceiptCard(session, session.userData.orderDetails as IOrderDetails);
             session.replaceDialog('/mainMenu');
         }
         else {
@@ -251,6 +252,27 @@ bot.dialog('/order', [
         }
     }
 ]);
+
+function displayOrderDetails(session: Session, orderDetails: IOrderDetails) {
+    session.userData.orderDetails.totalPrice = orderDetails.price;
+    let attachments = [];
+    attachments.push(new builder.HeroCard(session)
+        .title(orderDetails.itemName + ' - $' + orderDetails.price)
+        .images([builder.CardImage.create(session, orderDetails.image)]));
+
+    orderDetails.options.forEach(option => {
+        attachments.push(new builder.HeroCard(session)
+            .title(option.name + ' - $' + option.price));
+        session.userData.orderDetails.totalPrice += option.price;
+    });
+    attachments.push(new builder.HeroCard(session)
+        .title('Total - $' + session.userData.orderDetails.totalPrice));
+
+    var msg = new builder.Message(session)
+        .attachmentLayout(builder.AttachmentLayout.list)
+        .attachments(attachments);
+    session.send(msg);
+}
 
 function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
     let totalPrice = orderDetails.price;
@@ -268,8 +290,7 @@ function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
     let card = new builder.ReceiptCard(session)
         .title('Order details')
         .facts([
-            builder.Fact.create(session, '1234', 'Order Number'),
-            builder.Fact.create(session, 'VISA 5555-****', 'Payment Method')
+            builder.Fact.create(session, '1234', 'Order Number')
         ])
         .items(items)
         .tax('$ ' + orderDetails.taxes)
