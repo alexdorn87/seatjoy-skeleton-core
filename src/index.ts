@@ -14,11 +14,8 @@ let connector = new ChatConnector({
     appPassword: process.env.MICROSOFT_APP_PASSWORD
 });
 
-
 // bot
 let bot = new UniversalBot(connector);
-
-bot.set('localizerSettings', { botLocalePath: path.join(__dirname, '../locale') });
 
 // dialogs
 
@@ -34,7 +31,8 @@ intents
 // root dialogs
 
 bot.dialog('/None', (session: Session, args) => {
-    session.endConversation("Sorry, I didn't get that")
+    session.send("Sorry, I didn't get that");
+    session.replaceDialog('/mainMenu');
 })
 
 // Facebook specific dialgos
@@ -58,7 +56,7 @@ bot.beginDialogAction('confirmOrder', '/confirmOrder');
 // set the dialog itself.
 bot.dialog('/getstarted', [
     (session, args) => {
-        session.send("Greetings %s!", session.message.user.name.split(' ')[0]);
+        session.send("Welcome %s to Seatjoy food service!", session.message.user.name.split(' ')[0]);
         session.replaceDialog('/mainMenu');
     }
 ]);
@@ -139,12 +137,6 @@ bot.dialog('/menuOptions', [
                         builder.CardAction.dialogAction(session, 'moreFoodMenu', null, 'View')
                     ]),
                 new builder.HeroCard(session)
-                    .title("")
-                    .subtitle("")
-                    //.images([
-                    //    builder.CardImage.create(session, "https://imagizer.imageshack.us/480x317f/922/MxK7no.png")
-                    //        .tap(builder.CardAction.showImage(session, "https://imagizer.imageshack.us/480x317f/922/MxK7no.png")),
-                    //])
                     .buttons([
                         builder.CardAction.dialogAction(session, 'mainMenu', null, 'Back')
                     ])
@@ -157,27 +149,64 @@ bot.dialog('/menuOptions', [
 bot.dialog('/regularMenu', [
     (session) => {
         session.send('Select your choice:');
-        let attachments = [];
-        regularMenuItems.forEach(item => {
-            let card = new builder.HeroCard(session)
-                .title(item.itemName + ' ' + item.title)
-                .subtitle(item.description)
-                .images([
-                    builder.CardImage.create(session, item.image)
-                        .tap(builder.CardAction.showImage(session, item.image)),
-                ])
-                .buttons([
-                    builder.CardAction.dialogAction(session, 'order', JSON.stringify(item), 'Select')
-                ]);
-            attachments.push(card);
-        });
-
-        var msg = new builder.Message(session)
-            .attachmentLayout(builder.AttachmentLayout.carousel)
-            .attachments(attachments);
-        session.endDialog(msg);
+        displayItems(session, regularMenuItems);
     }
 ]);
+
+bot.dialog('/specialsMenu', [
+    (session) => {
+        session.send('Here are the specials:');
+        displayItems(session, specialMenuItems);
+    }
+]);
+
+bot.dialog('/snacksAndDrinksMenu', [
+    (session) => {
+        session.send('Appetizer choices:');
+        displayItems(session, snacksAndDrinksMenuItems);
+    }
+]);
+
+bot.dialog('/saladsMenu', [
+    (session) => {
+        session.send('Salads choices:');
+        displayItems(session, saladsMenuItems);
+    }
+]);
+
+bot.dialog('/moreFoodMenu', [
+    (session) => {
+        session.send('Thai Stir fried choices:');
+        displayItems(session, otherMenuItems);
+    }
+]);
+
+
+function displayItems(session: Session, items: IOrderDetails[]) {
+    let attachments = [];
+    items.forEach(item => {
+        let card = new builder.HeroCard(session)
+            .title(item.itemName + ' - $' + item.price + ' ' + item.title)
+            .subtitle(item.description)
+            .images([
+                builder.CardImage.create(session, item.image)
+                    .tap(builder.CardAction.showImage(session, item.image)),
+            ])
+            .buttons([
+                builder.CardAction.dialogAction(session, 'order', JSON.stringify(item), 'Select')
+            ]);
+        attachments.push(card);
+    });
+    attachments.push(new builder.HeroCard(session)
+        .buttons([
+            builder.CardAction.dialogAction(session, 'menuOptions', null, 'Back')
+        ]));
+
+    var msg = new builder.Message(session)
+        .attachmentLayout(builder.AttachmentLayout.carousel)
+        .attachments(attachments);
+    session.endDialog(msg);
+}
 
 bot.dialog('/selectItemOptions', [
     (session, args) => {
@@ -194,7 +223,7 @@ bot.dialog('/selectItemOptions', [
         if (results.response) {
             let choiceSelected = session.userData.orderDetails.options[results.response.index];
             session.userData.orderDetails.options = [choiceSelected];
-            session.beginDialog('/order', { data: JSON.stringify(session.userData.orderDetails) });
+            session.replaceDialog('/order', { data: JSON.stringify(session.userData.orderDetails) });
         }
     }
 ]);
@@ -204,11 +233,21 @@ bot.dialog('/order', [
     (session, args) => {
         let item = JSON.parse(args.data) as IOrderDetails;
         if (item.options.length > 1) {
-            session.beginDialog('/selectItemOptions', item);
+            session.replaceDialog('/selectItemOptions', item);
         }
         else {
             sendReceiptCard(session, JSON.parse(args.data) as IOrderDetails);
-            session.endDialog();
+            builder.Prompts.choice(session, ' ', ['Confirm', 'Cancel'], { maxRetries: 0 });
+        }
+    },
+    (session, results) => {
+        if (results.response.index == 0) {
+            session.send('Your order is confirmed. Thank you for choosing us!');
+            session.replaceDialog('/mainMenu');
+        }
+        else {
+            session.send('Order canceled.')
+            session.replaceDialog('/mainMenu');
         }
     }
 ]);
@@ -234,17 +273,13 @@ function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
         ])
         .items(items)
         .tax('$ ' + orderDetails.taxes)
-        .total('$ ' + (totalPrice + orderDetails.taxes))
-        .buttons([
-            builder.CardAction.dialogAction(session, 'confirmOrder', null, 'Confirm')
-        ]);
+        .total('$ ' + (totalPrice + orderDetails.taxes));
 
 
     // attach the card to the reply message
     var msg = new builder.Message(session).addAttachment(card);
     session.send(msg);
 }
-
 
 // hard reset
 bot.endConversationAction('forget', 'Converation deleted.', { matches: /^forget/i });
@@ -284,8 +319,13 @@ function startBot(db) {
                     [
                         {
                             type: 'postback',
-                            title: 'Menu',
+                            title: 'Main menu',
                             payload: 'action?mainMenu'
+                        },
+                        {
+                            type: 'postback',
+                            title: 'Specials',
+                            payload: 'action?specialsMenu'
                         }
                     ]
                 }
@@ -323,7 +363,6 @@ interface IOrderDetails {
     image: string,
     options: IOrderOption[]
 }
-
 
 interface IOrderOption {
     name: string,
@@ -402,3 +441,152 @@ var regularMenuItems: IOrderDetails[] = [
         ]
     }
 ];
+
+var specialMenuItems: IOrderDetails[] = [
+    {
+        itemName: 'Crispy Pork with Fried Rice',
+        title: '',
+        description: '',
+        image: 'http://imagizer.imageshack.us/600x599f/924/sCC747.jpg',
+        price: 11,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Green Curry',
+        title: '',
+        description: '',
+        image: 'http://imagizer.imageshack.us/600x397f/923/LRFRMk.jpg',
+        price: 11,
+        taxes: 0,
+        options: [
+            { name: 'Chicken 🐔', price: 1 },
+            { name: 'Beef 🍖', price: 1 },
+            { name: 'Shrimp 🦐', price: 2 },
+            { name: 'Veggie 🍲', price: 0 }
+        ]
+    },
+    {
+        itemName: 'Massaman Chicken Curry',
+        title: '',
+        description: '',
+        image: 'http://imagizer.imageshack.us/600x397f/924/DHcrEH.jpg',
+        price: 11,
+        taxes: 0,
+        options: []
+    }
+];
+
+var snacksAndDrinksMenuItems: IOrderDetails[] = [
+    {
+        itemName: 'Thai Iced Coffee',
+        title: '',
+        description: '',
+        image: '',
+        price: 3,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Thai Iced Tea',
+        title: '',
+        description: '',
+        image: '',
+        price: 3,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Mango Sticky rice',
+        title: '',
+        description: '',
+        image: '',
+        price: 3,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Phat Wings',
+        title: '',
+        description: '',
+        image: '',
+        price: 3,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Egg Roles',
+        title: '',
+        description: '',
+        image: '',
+        price: 3,
+        taxes: 0,
+        options: []
+    }
+];
+
+var saladsMenuItems: IOrderDetails[] = [
+    {
+        itemName: 'Cucumber 🥒 Salad',
+        title: '',
+        description: 'Chopped Cucumber, shredded carrots and red onions dressed sweet vinegar',
+        image: 'http://imagizer.imageshack.us/600x397f/922/2pX9tD.jpg',
+        price: 3,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Som Tum Salad',
+        title: '',
+        description: 'Shredded green papaya, carrots, cherry tomatos, green beans tosted with som tum.',
+        image: 'http://imagizer.imageshack.us/600x397f/923/rI9Ivh.jpg',
+        price: 6,
+        taxes: 0,
+        options: [
+            { name: 'Chicken 🐔', price: 1 },
+            { name: 'Beef 🍖', price: 1 },
+            { name: 'Shrimp 🦐', price: 2 },
+            { name: 'Veggie 🍲', price: 0 }
+        ]
+    }
+];
+
+var otherMenuItems: IOrderDetails[] = [
+    {
+        itemName: 'Ka Pow',
+        title: 'Food Lovers Favorite',
+        description: 'Stir fried chicken with Thai basil, bell peppers, and Thai chilies served over',
+        image: 'http://imagizer.imageshack.us/426x323f/924/tdYL0N.png',
+        price: 9,
+        taxes: 0,
+        options: []
+    },
+    {
+        itemName: 'Pad Ke-Mao',
+        title: '',
+        description: 'Stir fried flat rice noodles with ground chicken,broccoli cabbage and carrots',
+        image: 'http://imagizer.imageshack.us/600x450f/923/fVtxLm.jpg',
+        price: 9,
+        taxes: 0,
+        options: [
+            { name: 'Chicken 🐔', price: 1 },
+            { name: 'Beef 🍖', price: 1 },
+            { name: 'Shrimp 🦐', price: 2 },
+            { name: 'Veggie 🍲', price: 0 }
+        ]
+    },
+    {
+        itemName: 'Fried Rice',
+        title: '',
+        description: '',
+        image: 'http://imagizer.imageshack.us/600x450f/924/NXWmt5.jpg',
+        price: 9,
+        taxes: 0,
+        options: [
+            { name: 'Chicken 🐔', price: 1 },
+            { name: 'Beef 🍖', price: 1 },
+            { name: 'Shrimp 🦐', price: 2 },
+            { name: 'Veggie 🍲', price: 0 }
+        ]
+    }
+]
