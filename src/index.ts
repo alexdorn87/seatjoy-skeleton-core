@@ -237,7 +237,7 @@ bot.dialog('/order', [
         }
         else {
             sendReceiptCard(session, JSON.parse(args.data) as IOrderDetails);
-            builder.Prompts.choice(session, ' ', ['Confirm', 'Cancel'], { maxRetries: 0 });
+            builder.Prompts.choice(session, 'Please select:', ['Confirm', 'Cancel'], { maxRetries: 0 });
         }
     },
     (session, results) => {
