@@ -88,7 +88,7 @@ bot.dialog('/mainMenu', [
             .attachments([
                 new builder.HeroCard(session)
                     .title("Our Menu")
-                    .subtitle("We are pleased to offer you a wide-range of menu for lunch or dinner.")
+                    .subtitle("We are pleased to offer you a wide-range of menu for lunch or dinner")
                     .images([
                         builder.CardImage.create(session, "https://imagizer.imageshack.us/592x600f/923/yIDwcC.png")
                             .tap(builder.CardAction.showImage(session, "https://imagizer.imageshack.us/592x600f/923/yIDwcC.png")),
