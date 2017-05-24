@@ -61,86 +61,65 @@ bot.dialog('/getstarted', [
     }
 ]);
 
+// bot.dialog('/mainMenu', [
+//     (session) => {
+//         var msg = new builder.Message(session)
+//             .attachmentLayout(builder.AttachmentLayout.carousel)
+//             .attachments([
+//                 new builder.HeroCard(session)
+//                     .title("Order food")
+//                     .subtitle("Please take a look at our special menu!")
+//                     .images([
+//                         builder.CardImage.create(session, "http://imagizer.imageshack.us/295x166f/921/MBKvvN.png")
+//                             .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/295x166f/921/MBKvvN.png")),
+//                     ])
+//                     .buttons([
+//                         builder.CardAction.dialogAction(session, 'menuOptions', null, 'View')
+//                     ])
+//             ]);
+//         session.endDialog(msg);
+//     }
+// ]);
+
 bot.dialog('/mainMenu', [
     (session) => {
         var msg = new builder.Message(session)
             .attachmentLayout(builder.AttachmentLayout.carousel)
             .attachments([
                 new builder.HeroCard(session)
-                    .title("Order food")
-                    .subtitle("Please take a look at our special menu!")
+                    .title("Our Menu")
+                    .subtitle("We are pleased to offer you a wide-range of menu for lunch or dinner.")
                     .images([
-                        builder.CardImage.create(session, "http://imagizer.imageshack.us/295x166f/921/MBKvvN.png")
-                            .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/295x166f/921/MBKvvN.png")),
+                        builder.CardImage.create(session, "https://imagizer.imageshack.us/592x600f/923/yIDwcC.png")
+                            .tap(builder.CardAction.showImage(session, "https://imagizer.imageshack.us/592x600f/923/yIDwcC.png")),
                     ])
                     .buttons([
-                        builder.CardAction.dialogAction(session, 'menuOptions', null, 'View')
-                    ])
-            ]);
-        session.endDialog(msg);
-    }
-]);
+                        builder.CardAction.dialogAction(session, 'regularMenu', null, '🍛 Food 🍱'),
+                        builder.CardAction.dialogAction(session, 'moreFoodMenu', null, '🍛 More Food 😋'),
+                        builder.CardAction.dialogAction(session, 'specialsMenu', null, 'Specials 🙌😋')
 
-bot.dialog('/menuOptions', [
-    (session) => {
-        var msg = new builder.Message(session)
-            .attachmentLayout(builder.AttachmentLayout.carousel)
-            .attachments([
-                new builder.HeroCard(session)
-                    .title("Menu")
-                    .subtitle("Our regular menu")
-                    .images([
-                        builder.CardImage.create(session, "https://imagizer.imageshack.us/480x317f/922/MxK7no.png")
-                            .tap(builder.CardAction.showImage(session, "https://imagizer.imageshack.us/480x317f/922/MxK7no.png")),
-                    ])
-                    .buttons([
-                        builder.CardAction.dialogAction(session, 'regularMenu', null, 'View')
                     ]),
                 new builder.HeroCard(session)
-                    .title("Specials")
-                    .subtitle("Our special menu")
+                    .title("Drinks & Salads")
+                    .subtitle("Have a chill pill")
                     .images([
-                        builder.CardImage.create(session, "http://imagizer.imageshack.us/600x599f/924/sCC747.jpg")
-                            .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/600x599f/924/sCC747.jpg")),
+                        builder.CardImage.create(session, "http://imagizer.imageshack.us/541x392f/923/mXricm.png")
+                            .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/541x392f/923/mXricm.png")),
                     ])
                     .buttons([
-                        builder.CardAction.dialogAction(session, 'specialsMenu', null, 'View')
+                        builder.CardAction.dialogAction(session, 'snacksAndDrinksMenu', null, 'Snacks and Drinks ☕'),
+                        builder.CardAction.dialogAction(session, 'saladsMenu', null, 'Salads 🥗')
                     ]),
                 new builder.HeroCard(session)
-                    .title("Snacks & Drinks")
-                    .subtitle("Snacks & drinks menu")
+                    .title("Hours and Directions")
                     .images([
-                        builder.CardImage.create(session, "http://whatisthaifood.com/wp-content/uploads/2013/05/Egg-Rolls-575x262.jpg")
-                            .tap(builder.CardAction.showImage(session, "http://whatisthaifood.com/wp-content/uploads/2013/05/Egg-Rolls-575x262.jpg")),
+                        builder.CardImage.create(session, "http://imagizer.imageshack.us/600x450f/924/og9BY2.jpg")
+                            .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/600x450f/924/og9BY2.jpg")),
                     ])
                     .buttons([
-                        builder.CardAction.dialogAction(session, 'snacksAndDrinksMenu', null, 'View')
-                    ]),
-                new builder.HeroCard(session)
-                    .title("Salads")
-                    .subtitle("Our salads menu")
-                    .images([
-                        builder.CardImage.create(session, "https://imagizer.imageshack.us/362x600f/923/pV0Ugi.jpg")
-                            .tap(builder.CardAction.showImage(session, "https://imagizer.imageshack.us/362x600f/923/pV0Ugi.jpg")),
+                        builder.CardAction.dialogAction(session, 'locationsMenu', null, 'Location and Hours'),
+                        builder.CardAction.openUrl(session, 'http://www.phatthaisf.com/contact.html', 'Contact')
                     ])
-                    .buttons([
-                        builder.CardAction.dialogAction(session, 'saladsMenu', null, 'View')
-                    ]),
-                new builder.HeroCard(session)
-                    .title("More food")
-                    .subtitle("We have more options for you")
-                    .images([
-                        builder.CardImage.create(session, "http://imagizer.imageshack.us/426x323f/924/tdYL0N.png")
-                            .tap(builder.CardAction.showImage(session, "http://imagizer.imageshack.us/426x323f/924/tdYL0N.png")),
-                    ])
-                    .buttons([
-                        builder.CardAction.dialogAction(session, 'moreFoodMenu', null, 'View')
-                    ]),
-                new builder.HeroCard(session)
-                    .buttons([
-                        builder.CardAction.dialogAction(session, 'mainMenu', null, 'Back')
-                    ])
-
             ]);
         session.endDialog(msg);
     }
