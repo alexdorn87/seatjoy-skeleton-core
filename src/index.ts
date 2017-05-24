@@ -258,7 +258,8 @@ function displayOrderDetails(session: Session, orderDetails: IOrderDetails) {
     let attachments = [];
     attachments.push(new builder.HeroCard(session)
         .title(orderDetails.itemName + ' - $' + orderDetails.price)
-        .images([builder.CardImage.create(session, orderDetails.image)]));
+        //.images([builder.CardImage.create(session, orderDetails.image)])
+        );
 
     orderDetails.options.forEach(option => {
         attachments.push(new builder.HeroCard(session)
