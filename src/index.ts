@@ -255,11 +255,20 @@ bot.dialog('/order', [
 
 function displayOrderDetails(session: Session, orderDetails: IOrderDetails) {
     session.userData.orderDetails.totalPrice = orderDetails.price;
+
+    let msg = orderDetails.itemName + ' - $' + orderDetails.price + '\n\n';
+    orderDetails.options.forEach(option => {
+        msg += option.name + ' - $' + option.price + '\n\n';
+        session.userData.orderDetails.totalPrice += option.price;
+    });
+    msg += '*Total - $' + session.userData.orderDetails.totalPrice + '*';
+
+/*
     let attachments = [];
     attachments.push(new builder.HeroCard(session)
         .title(orderDetails.itemName + ' - $' + orderDetails.price)
         //.images([builder.CardImage.create(session, orderDetails.image)])
-        );
+    );
 
     orderDetails.options.forEach(option => {
         attachments.push(new builder.HeroCard(session)
@@ -272,6 +281,7 @@ function displayOrderDetails(session: Session, orderDetails: IOrderDetails) {
     var msg = new builder.Message(session)
         .attachmentLayout(builder.AttachmentLayout.list)
         .attachments(attachments);
+    */
     session.send(msg);
 }
 
