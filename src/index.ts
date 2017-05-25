@@ -56,6 +56,7 @@ bot.beginDialogAction('confirmOrder', '/confirmOrder');
 // set the dialog itself.
 bot.dialog('/getstarted', [
     (session, args) => {
+        session.userData.orderDetails = { totalPrice: 0, totalTaxes: 0, items: [] } as IOrderDetails;
         session.send("Welcome %s to Seatjoy food service!", session.message.user.name.split(' ')[0]);
         session.replaceDialog('/mainMenu');
     }
@@ -161,7 +162,7 @@ bot.dialog('/moreFoodMenu', [
 ]);
 
 
-function displayItems(session: Session, items: IOrderDetails[]) {
+function displayItems(session: Session, items: IOrderItemDetails[]) {
     let attachments = [];
     items.forEach(item => {
         let card = new builder.HeroCard(session)
@@ -189,8 +190,8 @@ function displayItems(session: Session, items: IOrderDetails[]) {
 
 bot.dialog('/selectItemOptions', [
     (session, args) => {
-        var item = args as IOrderDetails;
-        session.userData.orderDetails = item;
+        var item = args as IOrderItemDetails;
+
         let choices = [];
         item.options.forEach(option => {
             choices.push(option.name + ' $' + option.price);
@@ -200,9 +201,9 @@ bot.dialog('/selectItemOptions', [
     },
     (session, results) => {
         if (results.response) {
-            let choiceSelected = session.userData.orderDetails.options[results.response.index];
-            session.userData.orderDetails.options = [choiceSelected];
-            session.replaceDialog('/order', { data: JSON.stringify(session.userData.orderDetails) });
+            let choiceSelected = session.userData.selectedItem.options[results.response.index];
+            session.userData.selectedItem.options = [choiceSelected];
+            session.replaceDialog('/order', { data: JSON.stringify(session.userData.selectedItem) });
         }
     }
 ]);
@@ -210,71 +211,85 @@ bot.dialog('/selectItemOptions', [
 
 bot.dialog('/order', [
     (session, args) => {
-        let item = JSON.parse(args.data) as IOrderDetails;
+        let item = JSON.parse(args.data) as IOrderItemDetails;
+        session.userData.selectedItem = item;
+
         if (item.options.length > 1) {
             session.replaceDialog('/selectItemOptions', item);
         }
         else {
-            displayOrderDetails(session, item);
-            builder.Prompts.choice(session, 'Please select:', ['Confirm', 'Cancel'], { maxRetries: 0 });
+            session.userData.orderDetails.items.push(item);
+            displayOrderDetails(session, session.userData.orderDetails);
+            builder.Prompts.choice(session, 'Please select:', ['Confirm Order', 'Add more items', 'Cancel'], { maxRetries: 0 });
         }
     },
     (session, results) => {
-        if (results.response.index == 0) {
+        if (results.response.index == 0) { //'Confirm Order' 
             session.send('Your order is confirmed. Thank you for choosing us!');
             sendReceiptCard(session, session.userData.orderDetails as IOrderDetails);
             session.replaceDialog('/mainMenu');
+        } else if (results.response.index == 1) { //'Add more items' 
+            session.replaceDialog('/mainMenu');
         }
-        else {
-            session.send('Order canceled.')
+        else { //Cancel
+            session.userData.orderDetails = { totalPrice: 0, totalTaxes: 0, items: [] } as IOrderDetails;
+            session.send('Order canceled.');
             session.replaceDialog('/mainMenu');
         }
     }
 ]);
 
 function displayOrderDetails(session: Session, orderDetails: IOrderDetails) {
-    session.userData.orderDetails.totalPrice = orderDetails.price;
+    session.userData.orderDetails.totalPrice = 0;
 
-    let msg = orderDetails.itemName + ' - $' + orderDetails.price + '\n\n';
-    orderDetails.options.forEach(option => {
-        msg += option.name + ' - $' + option.price + '\n\n';
-        session.userData.orderDetails.totalPrice += option.price;
+    let msg = '';
+    orderDetails.items.forEach(item => {
+        session.userData.orderDetails.totalPrice += item.price;
+
+        msg += item.itemName + ' - $' + item.price + '\n\n';
+        item.options.forEach(option => {
+            msg += option.name + ' - $' + option.price + '\n\n';
+            session.userData.orderDetails.totalPrice += option.price;
+        });
     });
+
     msg += '*Total - $' + session.userData.orderDetails.totalPrice + '*';
 
-/*
-    let attachments = [];
-    attachments.push(new builder.HeroCard(session)
-        .title(orderDetails.itemName + ' - $' + orderDetails.price)
-        //.images([builder.CardImage.create(session, orderDetails.image)])
-    );
-
-    orderDetails.options.forEach(option => {
+    /*
+        let attachments = [];
         attachments.push(new builder.HeroCard(session)
-            .title(option.name + ' - $' + option.price));
-        session.userData.orderDetails.totalPrice += option.price;
-    });
-    attachments.push(new builder.HeroCard(session)
-        .title('Total - $' + session.userData.orderDetails.totalPrice));
-
-    var msg = new builder.Message(session)
-        .attachmentLayout(builder.AttachmentLayout.list)
-        .attachments(attachments);
-    */
+            .title(orderDetails.itemName + ' - $' + orderDetails.price)
+            //.images([builder.CardImage.create(session, orderDetails.image)])
+        );
+    
+        orderDetails.options.forEach(option => {
+            attachments.push(new builder.HeroCard(session)
+                .title(option.name + ' - $' + option.price));
+            session.userData.orderDetails.totalPrice += option.price;
+        });
+        attachments.push(new builder.HeroCard(session)
+            .title('Total - $' + session.userData.orderDetails.totalPrice));
+    
+        var msg = new builder.Message(session)
+            .attachmentLayout(builder.AttachmentLayout.list)
+            .attachments(attachments);
+        */
     session.send(msg);
 }
 
 function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
-    let totalPrice = orderDetails.price;
-
     let items = [];
-    items.push(builder.ReceiptItem.create(session, '$ ' + orderDetails.price, orderDetails.itemName)
-        .quantity('1')
-        .image(builder.CardImage.create(session, orderDetails.image)));
-    orderDetails.options.forEach(option => {
-        items.push(builder.ReceiptItem.create(session, '$ ' + option.price, option.name)
-            .quantity('1'));
-        totalPrice += option.price;
+
+    orderDetails.items.forEach(item => {
+        items.push(builder.ReceiptItem.create(session, '$ ' + item.price, item.itemName)
+            .quantity('1')
+            .image(builder.CardImage.create(session, item.image)));
+
+        item.options.forEach(option => {
+            items.push(builder.ReceiptItem.create(session, '$ ' + option.price, option.name)
+                .quantity('1')
+                .image(builder.CardImage.create(session, '')));
+        });
     });
 
     let card = new builder.ReceiptCard(session)
@@ -283,8 +298,8 @@ function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
             builder.Fact.create(session, '1234', 'Order Number')
         ])
         .items(items)
-        .tax('$ ' + orderDetails.taxes)
-        .total('$ ' + (totalPrice + orderDetails.taxes));
+        .tax('$ ' + orderDetails.totalTaxes)
+        .total('$ ' + (orderDetails.totalPrice + orderDetails.totalTaxes));
 
 
     // attach the card to the reply message
@@ -366,6 +381,12 @@ function startBot(db) {
 }
 
 interface IOrderDetails {
+    totalPrice: number,
+    totalTaxes: number,
+    items: IOrderItemDetails[]
+}
+
+interface IOrderItemDetails {
     itemName: string,
     title: string,
     description: string,
@@ -380,7 +401,7 @@ interface IOrderOption {
     price: number
 }
 
-var regularMenuItems: IOrderDetails[] = [
+var regularMenuItems: IOrderItemDetails[] = [
     {
         itemName: 'Pad Thai',
         title: '',
@@ -453,7 +474,7 @@ var regularMenuItems: IOrderDetails[] = [
     }
 ];
 
-var specialMenuItems: IOrderDetails[] = [
+var specialMenuItems: IOrderItemDetails[] = [
     {
         itemName: 'Crispy Pork with Fried Rice',
         title: '',
@@ -488,7 +509,7 @@ var specialMenuItems: IOrderDetails[] = [
     }
 ];
 
-var snacksAndDrinksMenuItems: IOrderDetails[] = [
+var snacksAndDrinksMenuItems: IOrderItemDetails[] = [
     {
         itemName: 'Thai Iced Coffee',
         title: '',
@@ -536,7 +557,7 @@ var snacksAndDrinksMenuItems: IOrderDetails[] = [
     }
 ];
 
-var saladsMenuItems: IOrderDetails[] = [
+var saladsMenuItems: IOrderItemDetails[] = [
     {
         itemName: 'Cucumber 🥒 Salad',
         title: '',
@@ -562,7 +583,7 @@ var saladsMenuItems: IOrderDetails[] = [
     }
 ];
 
-var otherMenuItems: IOrderDetails[] = [
+var otherMenuItems: IOrderItemDetails[] = [
     {
         itemName: 'Ka Pow',
         title: 'Food Lovers Favorite',
