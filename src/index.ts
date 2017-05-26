@@ -55,8 +55,8 @@ bot.beginDialogAction('confirmOrder', '/confirmOrder');
 
 // set the dialog itself.
 bot.dialog('/getstarted', [
-    (session, args) => {
-        session.userData.orderDetails = { totalPrice: 0, totalTaxes: 0, items: [] } as IOrderDetails;
+    (session, args) => {        
+        resetOrder(session);
         session.send("Welcome %s to Seatjoy food service!", session.message.user.name.split(' ')[0]);
         session.replaceDialog('/mainMenu');
     }
@@ -227,12 +227,13 @@ bot.dialog('/order', [
         if (results.response.index == 0) { //'Confirm Order' 
             session.send('Your order is confirmed. Thank you for choosing us!');
             sendReceiptCard(session, session.userData.orderDetails as IOrderDetails);
+            resetOrder(session);
             session.replaceDialog('/mainMenu');
         } else if (results.response.index == 1) { //'Add more items' 
             session.replaceDialog('/mainMenu');
         }
         else { //Cancel
-            session.userData.orderDetails = { totalPrice: 0, totalTaxes: 0, items: [] } as IOrderDetails;
+            resetOrder(session);
             session.send('Order canceled.');
             session.replaceDialog('/mainMenu');
         }
@@ -304,7 +305,11 @@ function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
 
     // attach the card to the reply message
     var msg = new builder.Message(session).addAttachment(card);
-    session.send(msg);
+    session.send(msg);    
+}
+
+function resetOrder(session: Session) {
+    session.userData.orderDetails = { totalPrice: 0, totalTaxes: 0, items: [] } as IOrderDetails;
 }
 
 // hard reset
