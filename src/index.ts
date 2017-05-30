@@ -1,9 +1,12 @@
 ﻿let path = require('path')
+import { MongoClient } from 'mongodb';
 import { ChatConnector, Session, Message, UniversalBot } from 'botbuilder';
 import * as builder from 'botbuilder';
 import * as express from 'express';
 import * as bodyparser from 'body-parser';
+import * as _ from 'lodash';
 import * as cmfacebok from '@connie/modules/dist/facebook';
+import * as cmusers from '@connie/modules/dist/users';
 
 interface IOptionsArgs {
     message: string;
@@ -18,7 +21,6 @@ let connector = new ChatConnector({
 let bot = new UniversalBot(connector);
 
 // dialogs
-
 let intents = new builder.IntentDialog();
 
 bot.dialog('/', intents);
@@ -55,7 +57,7 @@ bot.beginDialogAction('confirmOrder', '/confirmOrder');
 
 // set the dialog itself.
 bot.dialog('/getstarted', [
-    (session, args) => {        
+    (session, args) => {
         resetOrder(session);
         session.send("Welcome %s to Seatjoy food service!", session.message.user.name.split(' ')[0]);
         session.replaceDialog('/mainMenu');
@@ -305,7 +307,7 @@ function sendReceiptCard(session: Session, orderDetails: IOrderDetails) {
 
     // attach the card to the reply message
     var msg = new builder.Message(session).addAttachment(card);
-    session.send(msg);    
+    session.send(msg);
 }
 
 function resetOrder(session: Session) {
@@ -319,9 +321,9 @@ bot.endConversationAction('forget', 'Converation deleted.', { matches: /^forget/
 bot.use(builder.Middleware.dialogVersion({ version: 2, resetCommand: /^reset/i }));
 
 if (process.env.DB_URI) {
-    // MongoClient.connect(process.env.DB_URI).then((db) => {
-    //     startBot(db);
-    // });
+    MongoClient.connect(process.env.DB_URI).then((db) => {
+        startBot(db);
+    });
 }
 else {
     startBot(null);
@@ -338,6 +340,24 @@ function startBot(db) {
     // Handle Bot Framework messages
     server.post('/api/messages', connector.listen());
 
+    cmusers.install(bot, db, server,
+        {
+            FACEBOOK_PAGE_TOKEN: process.env.FACEBOOK_PAGE_TOKEN,
+            transformUser: user => {
+
+                if (_.isString(user.custom.sign)) {
+
+                    user.custom.sign = JSON.parse(user.custom.sign)
+                }
+
+                if (user.name == null && user.facebookPageScopedProfile) {
+
+                    user.name = user.facebookPageScopedProfile.first_name + ' ' + user.facebookPageScopedProfile.last_name;
+                }
+
+                return user
+            }
+        });
     //
     cmfacebok.install(bot,
         {
